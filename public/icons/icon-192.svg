@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
+  <rect width="192" height="192" rx="32" fill="#0f0a1a"/>
+  <rect x="8" y="8" width="176" height="176" rx="28" fill="none" stroke="#e8c84a" stroke-width="3"/>
+  <text x="96" y="70" font-family="serif" font-size="28" font-weight="bold" text-anchor="middle" fill="#e8c84a">WORD</text>
+  <text x="96" y="110" font-size="52" text-anchor="middle">⚔️</text>
+  <text x="96" y="155" font-family="serif" font-size="28" font-weight="bold" text-anchor="middle" fill="#e8c84a">DUEL</text>
+</svg>
