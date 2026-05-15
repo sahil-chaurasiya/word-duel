@@ -36,6 +36,7 @@ export default function ArenaScreen() {
   const floatIdRef = useRef(0);
   const currentRoundRef = useRef(0);
   const timerEndCalledRef = useRef(false);
+  const gameOverRef = useRef(false);
 
   const meId = playerId;
   const me = players[meId];
@@ -85,12 +86,14 @@ export default function ArenaScreen() {
       if (myResult?.damage > 0) setTimeout(() => addFloat(`-${myResult.damage}`), 200);
       if (oppResult?.damage > 0) setTimeout(() => addFloat(`-${oppResult.damage}`), 400);
       // Wait 3s then tell server to start next round (client-driven, avoids server setTimeout)
+      // gameOverRef guards against calling beginRound after match:over fires
       setTimeout(() => {
-        api.beginRound(roomCode, meId);
+        if (!gameOverRef.current) api.beginRound(roomCode, meId);
       }, 3000);
     });
 
     channel.bind('match:over', ({ winner, players: p, matchLog: log }) => {
+      gameOverRef.current = true;
       setTimerActive(false);
       setPlayers(p);
       const isWin = winner === meId;
