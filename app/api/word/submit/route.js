@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
-const { rooms, resolveRound, startRound } = require('@/lib/roomStore');
+const { getRoom, saveRoom, resolveRound } = require('@/lib/roomStore');
 const { trigger } = require('@/lib/pusherServer');
 
 export async function POST(request) {
   const { code, playerId, word } = await request.json();
-  const room = rooms[code];
+  const room = await getRoom(code);
   if (!room) return NextResponse.json({ error: 'Room not found' }, { status: 404 });
   if (room.status !== 'playing') return NextResponse.json({ error: 'Not in game' }, { status: 400 });
   if (!room.players[playerId]) return NextResponse.json({ error: 'Not in room' }, { status: 403 });
@@ -16,22 +16,19 @@ export async function POST(request) {
     time: Date.now() - room.roundStartTime
   };
 
-  // For bot games: bot submission is handled at resolve time, so resolve immediately
-  // For PvP: resolve when both players have submitted
-  const allSubmitted = room.playerOrder.every(pid =>
-    pid === 'BOT' ? true : room.roundSubmissions[pid] !== undefined
-  );
+  // For bot games: resolve immediately once human submits (bot word picked at resolve time)
+  const humanSubmitted = room.playerOrder
+    .filter(pid => pid !== 'BOT')
+    .every(pid => room.roundSubmissions[pid] !== undefined);
 
-  if (allSubmitted && !room._resolving) {
+  if (humanSubmitted && !room._resolving) {
     room._resolving = true;
+    await saveRoom(room);
+    // Resolve only — do NOT start next round here.
+    // Client will call /api/round/begin after receiving round:result.
     await resolveRound(room, trigger);
-    room._resolving = false;
-
-    if (room.status === 'playing') {
-      await new Promise(r => setTimeout(r, 3000));
-      room.roundStartTime = null;
-      await startRound(room, trigger);
-    }
+  } else {
+    await saveRoom(room);
   }
 
   return NextResponse.json({ success: true });

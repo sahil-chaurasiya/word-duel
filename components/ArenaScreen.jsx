@@ -84,6 +84,10 @@ export default function ArenaScreen() {
       const oppResult = oppId ? results[oppId] : null;
       if (myResult?.damage > 0) setTimeout(() => addFloat(`-${myResult.damage}`), 200);
       if (oppResult?.damage > 0) setTimeout(() => addFloat(`-${oppResult.damage}`), 400);
+      // Wait 3s then tell server to start next round (client-driven, avoids server setTimeout)
+      setTimeout(() => {
+        api.beginRound(roomCode, meId);
+      }, 3000);
     });
 
     channel.bind('match:over', ({ winner, players: p, matchLog: log }) => {

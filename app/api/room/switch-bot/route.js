@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
-const { rooms, createPlayer, sanitizePlayers, startRound } = require('@/lib/roomStore');
+const { getRoom, saveRoom, createPlayer, sanitizePlayers } = require('@/lib/roomStore');
 const { getBotName } = require('@/lib/botLogic');
 const { trigger } = require('@/lib/pusherServer');
 
 export async function POST(request) {
   const { code, playerId, difficulty } = await request.json();
-  const room = rooms[code];
+  const room = await getRoom(code);
   if (!room) return NextResponse.json({ error: 'Room not found' }, { status: 404 });
   if (room.hostId !== playerId) return NextResponse.json({ error: 'Not host' }, { status: 403 });
   if (room.status !== 'waiting') return NextResponse.json({ error: 'Already started' }, { status: 400 });
@@ -24,9 +24,11 @@ export async function POST(request) {
   room.isBot = true;
   room.botDifficulty = difficulty || 'medium';
   room.status = 'playing';
+  room.roundStartTime = null;
+  await saveRoom(room);
 
+  // Fire match:starting — client will call /api/round/begin once subscribed
   await trigger(`room-${code}`, 'match:starting', { players: sanitizePlayers(room.players) });
-  setTimeout(() => startRound(room, trigger), 2000);
 
   return NextResponse.json({ success: true, botName });
 }

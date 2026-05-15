@@ -7,17 +7,18 @@ export async function POST(request) {
   if (!name?.trim()) return NextResponse.json({ error: 'Name required' }, { status: 400 });
 
   const playerId = `p_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
-  const room = createRoom(playerId, name.trim().slice(0, 20));
+  const room = await createRoom(playerId, name.trim().slice(0, 20));
 
   const botId = 'BOT';
   const botName = getBotName();
+  const { saveRoom } = require('@/lib/roomStore');
   room.players[botId] = createPlayer(botId, botName);
   room.playerOrder.push(botId);
   room.isBot = true;
   room.botDifficulty = difficulty || 'medium';
   room.status = 'playing';
+  await saveRoom(room);
 
-  // No setTimeout — client calls /api/round/begin once Pusher is subscribed
   return NextResponse.json({
     success: true,
     code: room.code,
