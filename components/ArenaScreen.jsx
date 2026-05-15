@@ -34,6 +34,8 @@ export default function ArenaScreen() {
   const [roundFlash, setRoundFlash] = useState(false);
   const inputRef = useRef(null);
   const floatIdRef = useRef(0);
+  const currentRoundRef = useRef(0);
+  const timerEndCalledRef = useRef(false);
 
   const meId = playerId;
   const me = players[meId];
@@ -48,12 +50,15 @@ export default function ArenaScreen() {
     setTimeout(() => setDamageFloats(prev => prev.filter(f => f.id !== id)), 1400);
   }
 
+  // Subscribe to Pusher and call /api/round/begin once subscribed
   useEffect(() => {
     if (!roomCode) return;
     const channel = subscribe(`room-${roomCode}`);
     if (!channel) return;
 
     channel.bind('round:start', ({ round, category, duration, players: p }) => {
+      currentRoundRef.current = round;
+      timerEndCalledRef.current = false;
       setRound(round);
       setCategory(category);
       setRoundDuration(duration);
@@ -111,17 +116,33 @@ export default function ArenaScreen() {
       setPlayerOrder(Object.keys(p));
     });
 
+    // Kick off the first round now that we're subscribed
+    api.beginRound(roomCode, meId);
+
     return () => {
       channel.unbind_all();
       unsubscribe(`room-${roomCode}`);
     };
   }, [roomCode, meId, subscribe, unsubscribe, notify, setScreen, setMatchOver]);
 
+  // When the client-side timer fires, tell the server to resolve the round
+  function handleTimerEnd() {
+    if (timerEndCalledRef.current) return;
+    timerEndCalledRef.current = true;
+    api.endRound(roomCode, meId, currentRoundRef.current);
+  }
+
   async function submitWord() {
     if (submitted || !wordInput.trim()) return;
-    const res = await api.submitWord(roomCode, meId, wordInput.trim());
-    if (res?.error) { notify(res.error); return; }
+    // Set submitted immediately (optimistic) so UI locks before the await returns.
+    // If the server rejects, we roll back. This prevents the race where the next
+    // round:start arrives and resets submitted=false before setSubmitted(true) fires.
     setSubmitted(true);
+    const res = await api.submitWord(roomCode, meId, wordInput.trim());
+    if (res?.error) {
+      setSubmitted(false); // roll back on error
+      notify(res.error);
+    }
   }
 
   function handleKeyDown(e) {
@@ -182,7 +203,7 @@ export default function ArenaScreen() {
 
         <div className="hud-center">
           <span className="vs-text">VS</span>
-          <TimerRing duration={roundDuration} active={timerActive} />
+          <TimerRing duration={roundDuration} active={timerActive} onEnd={handleTimerEnd} />
         </div>
 
         <div className="player-hud opponent" style={{ flex: 1 }}>

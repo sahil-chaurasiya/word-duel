@@ -6,20 +6,27 @@ const SIZE = 52;
 const R = 22;
 const CIRCUM = 2 * Math.PI * R;
 
-export default function TimerRing({ duration = 10, active }) {
+export default function TimerRing({ duration = 10, active, onEnd }) {
   const [timeLeft, setTimeLeft] = useState(duration);
   const startRef = useRef(null);
   const rafRef = useRef(null);
+  const endFiredRef = useRef(false);
 
   useEffect(() => {
     setTimeLeft(duration);
+    endFiredRef.current = false;
     if (!active) return;
     startRef.current = performance.now();
     function tick(now) {
       const elapsed = (now - startRef.current) / 1000;
       const remaining = Math.max(0, duration - elapsed);
       setTimeLeft(remaining);
-      if (remaining > 0) rafRef.current = requestAnimationFrame(tick);
+      if (remaining > 0) {
+        rafRef.current = requestAnimationFrame(tick);
+      } else if (!endFiredRef.current) {
+        endFiredRef.current = true;
+        onEnd?.();
+      }
     }
     rafRef.current = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafRef.current);

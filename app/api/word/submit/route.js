@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-const { rooms, resolveRound } = require('@/lib/roomStore');
+const { rooms, resolveRound, startRound } = require('@/lib/roomStore');
 const { trigger } = require('@/lib/pusherServer');
 
 export async function POST(request) {
@@ -16,10 +16,22 @@ export async function POST(request) {
     time: Date.now() - room.roundStartTime
   };
 
-  // If bot already submitted, resolve now
-  if (room.isBot && room.roundSubmissions['BOT'] !== undefined) {
-    if (room.roundTimerHandle) clearTimeout(room.roundTimerHandle);
-    resolveRound(room, trigger);
+  // For bot games: bot submission is handled at resolve time, so resolve immediately
+  // For PvP: resolve when both players have submitted
+  const allSubmitted = room.playerOrder.every(pid =>
+    pid === 'BOT' ? true : room.roundSubmissions[pid] !== undefined
+  );
+
+  if (allSubmitted && !room._resolving) {
+    room._resolving = true;
+    await resolveRound(room, trigger);
+    room._resolving = false;
+
+    if (room.status === 'playing') {
+      await new Promise(r => setTimeout(r, 3000));
+      room.roundStartTime = null;
+      await startRound(room, trigger);
+    }
   }
 
   return NextResponse.json({ success: true });

@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
-const { createRoom, createPlayer, sanitizePlayers, publicRoom, startRound } = require('@/lib/roomStore');
+const { createRoom, createPlayer, publicRoom } = require('@/lib/roomStore');
 const { getBotName } = require('@/lib/botLogic');
-const { trigger } = require('@/lib/pusherServer');
 
 export async function POST(request) {
   const { name, difficulty } = await request.json();
@@ -18,11 +17,7 @@ export async function POST(request) {
   room.botDifficulty = difficulty || 'medium';
   room.status = 'playing';
 
-  setTimeout(async () => {
-    await trigger(`room-${room.code}`, 'match:starting', { players: sanitizePlayers(room.players) });
-    setTimeout(() => startRound(room, trigger), 2000);
-  }, 500);
-
+  // No setTimeout — client calls /api/round/begin once Pusher is subscribed
   return NextResponse.json({
     success: true,
     code: room.code,

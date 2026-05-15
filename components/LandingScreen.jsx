@@ -116,8 +116,6 @@ function BotModeEntry({ name, onBack }) {
     setPlayerId(res.playerId);
     setRoom(res.room);
     setRoomCode(res.code);
-    // Pre-populate matchState so ArenaScreen has players even if the
-    // Pusher 'match:starting' event is missed due to cold-start latency on Vercel
     if (res.room?.players) {
       setMatchState({ players: res.room.players, round: 0, category: null });
     }

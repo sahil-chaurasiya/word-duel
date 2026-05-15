@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-const { rooms, sanitizePlayers, startRound } = require('@/lib/roomStore');
+const { rooms, sanitizePlayers } = require('@/lib/roomStore');
 const { trigger } = require('@/lib/pusherServer');
 
 export async function POST(request) {
@@ -11,8 +11,8 @@ export async function POST(request) {
   if (room.status !== 'waiting') return NextResponse.json({ error: 'Already started' }, { status: 400 });
 
   room.status = 'playing';
+  // Fire match:starting so both clients navigate to arena, then they each call /api/round/begin
   await trigger(`room-${code}`, 'match:starting', { players: sanitizePlayers(room.players) });
-  setTimeout(() => startRound(room, trigger), 2000);
 
   return NextResponse.json({ success: true });
 }
