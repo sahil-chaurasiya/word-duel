@@ -12,11 +12,14 @@ const MAX_HEALTH = 100;
 const ENERGY_MAX = 100;
 
 export default function ArenaScreen() {
-  const { roomCode, playerId, setScreen, setMatchState, setMatchOver, notify, reset } = useGame();
+  const { roomCode, playerId, matchState, setScreen, setMatchState, setMatchOver, notify, reset } = useGame();
   const { subscribe, unsubscribe } = usePusher();
 
-  const [players, setPlayers] = useState({});
-  const [playerOrder, setPlayerOrder] = useState([]);
+  // Seed from matchState so players are visible immediately (fixes Vercel cold-start race)
+  const [players, setPlayers] = useState(matchState?.players || {});
+  const [playerOrder, setPlayerOrder] = useState(
+    matchState?.players ? Object.keys(matchState.players) : []
+  );
   const [round, setRound] = useState(0);
   const [category, setCategory] = useState(null);
   const [roundDuration, setRoundDuration] = useState(10);
